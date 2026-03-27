@@ -1,0 +1,155 @@
+name: Publish Package
+
+on:
+  workflow_dispatch:
+    inputs:
+      platform:
+        description: 'Target platform'
+        required: true
+        type: choice
+        default: 'all'
+        options:
+          - all
+          - github
+          - npm
+      publish_type:
+        description: 'Tags of package'
+        required: true
+        type: choice
+        options:
+          - beta
+          - latest
+
+jobs:
+  publish-beta:
+    runs-on: ubuntu-latest
+    if: inputs.publish_type == 'beta'
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v6
+        with:
+          ref: ${{ github.ref }}  # 检出触发 Release 的那个 commit
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v6
+        with:
+          node-version: '24'
+          registry-url: https://registry.npmjs.org
+
+      - name: Cache dependencies
+        id: cache-dependencies
+        uses: actions/cache@v5
+        with:
+          path: ./node_modules
+          key: dependencies-${{ runner.os }}-node-${{ hashFiles('./pnpm-lock.yaml') }}
+
+      - name: Install dependencies
+        if: steps.cache-dependencies.outputs.cache-hit != 'true'
+        run: npm install -g pnpm && pnpm i --frozen-lockfile
+
+      - name: Build
+        run: npm run build:prod
+
+      - name: Compute beta version
+        id: version
+        run: |
+          BASE=$(node -p "require('./package.json').version")
+          SHA=$(git rev-parse --short HEAD)
+          echo "version=${BASE}-beta.${SHA}" >> "$GITHUB_OUTPUT"
+
+      - name: Bump version to beta (in-memory, not committed)
+        run: npm version "${{ steps.version.outputs.version }}" --no-git-tag-version
+    
+      - name: Publish beta to npm
+        if: inputs.platform == 'all' || inputs.platform == 'npm'
+        run: npm run publish:beta
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+
+      - name: Setup Node.js for GitHub Packages
+        if: inputs.platform == 'all' || inputs.platform == 'github'
+        uses: actions/setup-node@v6
+        with:
+          node-version: '24'
+          registry-url: https://npm.pkg.github.com
+
+      - name: Update package.json for GitHub Packages
+        if: inputs.platform == 'all' || inputs.platform == 'github'
+        run: |
+          node -e "
+            const fs = require('fs');
+            const pkg = JSON.parse(fs.readFileSync('./package.json', 'utf8'));
+            const owner = '${{ github.repository_owner }}';
+            pkg.name = '@' + owner + '/' + pkg.name;
+            pkg.publishConfig = { registry: 'https://npm.pkg.github.com' };
+            fs.writeFileSync('./package.json', JSON.stringify(pkg, null, 2));
+          "
+
+      - name: Publish beta to GitHub Packages
+        if: inputs.platform == 'all' || inputs.platform == 'github'
+        run: npm run publish:beta
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  # -------------------------------------------------------
+  # Release PR 合并后，发布正式 latest 版本到 npm
+  # -------------------------------------------------------
+  publish-latest:
+    runs-on: ubuntu-latest
+    if: inputs.publish_type == 'latest'
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v6
+        with:
+          ref: ${{ github.ref }}  # 检出触发 Release 的那个 commit
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v6
+        with:
+          node-version: '24'
+          registry-url: https://registry.npmjs.org
+      
+      - name: Cache dependencies
+        id: cache-dependencies
+        uses: actions/cache@v5
+        with:
+          path: ./node_modules
+          key: dependencies-${{ runner.os }}-node-${{ hashFiles('./pnpm-lock.yaml') }}
+
+      - name: Install dependencies
+        if: steps.cache-dependencies.outputs.cache-hit != 'true'
+        run: npm install -g pnpm && pnpm i --frozen-lockfile
+
+      - name: Build
+        run: npm run build:prod
+
+      - name: Publish latest to npm
+        if: inputs.platform == 'all' || inputs.platform == 'npm'
+        run: npm run publish:latest
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+
+      - name: Setup Node.js for GitHub Packages
+        if: inputs.platform == 'all' || inputs.platform == 'github'
+        uses: actions/setup-node@v6
+        with:
+          node-version: '24'
+          registry-url: https://npm.pkg.github.com
+
+      - name: Update package.json for GitHub Packages
+        if: inputs.platform == 'all' || inputs.platform == 'github'
+        run: |
+          node -e "
+            const fs = require('fs');
+            const pkg = JSON.parse(fs.readFileSync('./package.json', 'utf8'));
+            const owner = '${{ github.repository_owner }}';
+            pkg.name = '@' + owner + '/' + pkg.name;
+            pkg.publishConfig = { registry: 'https://npm.pkg.github.com' };
+            fs.writeFileSync('./package.json', JSON.stringify(pkg, null, 2));
+          "
+
+      - name: Publish beta to GitHub Packages
+        if: inputs.platform == 'all' || inputs.platform == 'github'
+        run: npm run publish:latest
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.GITHUB_TOKEN }}

@@ -1,0 +1,46 @@
+name: Release Please
+
+on:
+  push:
+    branches:
+      - main
+
+permissions:
+  contents: write
+  pull-requests: write
+  issues: write  # 添加这个，因为标签操作需要 issues 权限
+
+jobs:
+  release-please:
+    runs-on: ubuntu-latest
+    outputs:
+      release_created: ${{ steps.release.outputs.release_created }}
+      pr: ${{ steps.release.outputs.pr }}
+    steps:
+      - uses: googleapis/release-please-action@v4
+        id: release
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          release-type: node
+
+      - name: Trigger Test Workflow
+        if: |
+          steps.release.outputs.pr != '' ||
+          steps.release.outputs.release_created == 'true'
+        uses: actions/github-script@v8
+        with:
+          github-token: ${{ secrets.GH_TOKEN }}
+          script: |
+            const prNumber = "${{ fromJSON(steps.release.outputs.pr).number }}";
+            const releaseCreated = ${{ steps.release.outputs.release_created || 'false' }};
+            await github.rest.actions.createWorkflowDispatch({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              workflow_id: 'unittests.yml',
+              ref: 'main',
+              inputs: {
+                commit_sha: context.sha,
+                publish_type: releaseCreated ? 'latest' : 'beta',
+                pr_number: prNumber,
+              }
+            })

@@ -1,0 +1,41 @@
+{
+  "main": "./dist/index.cjs",
+  "module": "./dist/index.mjs",
+  "types": "./dist/types/index.d.ts",
+  "exports": {
+    ".": {
+      "require": {
+        "types": "./dist/types/index.d.ts",
+        "default": "./dist/index.cjs"
+      },
+      "import": {
+        "types": "./dist/types/index.d.ts",
+        "default": "./dist/index.mjs"
+      }
+    },
+    "./package.json": "./package.json"
+  },
+  "files": [
+    "dist/index.cjs",
+    "dist/index.mjs",
+    "dist/**/*.d.ts"
+  ],
+  "scripts": {
+    "test": "ava",
+    "test:coverage": "c8 ava",
+    "test:md": "mkdir -p reports && ava --tap | tap-json | node ./.github/scripts/generate-report.js --title \"${npm_config_title:-AVA Test Results}\" > reports/ava-test.md",
+    "test:report": "rimraf reports && npm run test:coverage && npm run test:md",
+    "clean": "rimraf dist",
+    "build": "npm run clean && rollup -c",
+    "build:dev": "NODE_ENV=development npm run build",
+    "build:prod": "NODE_ENV=production npm run build",
+    "dev": "nodemon --watch index.ts --watch src -e ts --exec \"npm run build:dev\"",
+    "check-publish": "npm pack --dry-run",
+    "publish:beta": "npm publish --tag beta --access public",
+    "publish:latest": "npm publish --tag latest --access public"
+  },
+  "publishConfig": {
+    "access": "public",
+    "provenance": false
+  }
+}
