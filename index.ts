@@ -4,6 +4,7 @@ import { execSync } from 'node:child_process';
 import * as jsonc from 'jsonc-parser';
 import { readFileSync, rmSync, writeFileSync } from 'node:fs';
 import prompts from 'prompts';
+import minimist from 'minimist';
 
 const libs = [
   '@rollup/plugin-terser',
@@ -120,7 +121,6 @@ async function initial() {
 }
 
 function main() {
-  const minimist = require('minimist');
   const args = minimist(process.argv.slice(2), {
     boolean: ['unload'],
   });
