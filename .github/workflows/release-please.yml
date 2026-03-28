@@ -31,7 +31,6 @@ jobs:
         with:
           github-token: ${{ secrets.GH_TOKEN }}
           script: |
-            const prNumber = "${{ fromJSON(steps.release.outputs.pr).number }}";
             const releaseCreated = ${{ steps.release.outputs.release_created || 'false' }};
             await github.rest.actions.createWorkflowDispatch({
               owner: context.repo.owner,
@@ -41,6 +40,5 @@ jobs:
               inputs: {
                 platform: 'github',
                 publish_type: releaseCreated ? 'latest' : 'beta',
-                pr_number: prNumber,
               }
             })
