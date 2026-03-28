@@ -1,6 +1,6 @@
 {
   "name": "@isaaxite/nodelib-scaffold",
-  "version": "0.0.1",
+  "version": "1.0.0",
   "description": "A lightweight CLI tool for scaffolding TypeScript Node.js libraries with automated publishing. Built-in GitHub Actions workflows handle version management, multi-channel releases (beta/latest), and GitHub Releases.",
   "keywords": [
     "CLI tool",
