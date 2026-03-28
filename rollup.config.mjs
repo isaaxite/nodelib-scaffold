@@ -7,12 +7,6 @@ const isProduction = process.env.NODE_ENV === 'production';
 export default {
   input: 'index.ts',
   output: [
-    // {
-    //   dir: 'dist',
-    //   format: 'esm',
-    //   entryFileNames: '[name].mjs',
-    //   sourcemap: !isProduction,
-    // },
     {
       dir: 'dist',
       format: 'cjs',
@@ -23,8 +17,6 @@ export default {
   plugins: [
     typescript({
       tsconfig: './tsconfig.json',
-      // declaration: false,
-      // declarationDir: undefined
     }),
     isProduction && terser({
       // 详细配置见下文
@@ -40,10 +32,7 @@ export default {
     }),
     copy({
       targets: [
-        { src: 'src/template/**/*', dest: 'dist/template' },
-        { src: 'src/template/.gitignore', dest: 'dist/template' },
-        { src: 'src/template/.github/scripts/', dest: 'dist/template/.github/' },
-        { src: 'src/template/.github/workflows/', dest: 'dist/template/.github/' },
+        { src: 'template', dest: 'dist/' },
       ]
     }),
   ]

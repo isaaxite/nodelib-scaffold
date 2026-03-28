@@ -1,4 +1,7 @@
 {
+  "name": "pkg",
+  "version": "0.0.1",
+  "description": "",
   "main": "./dist/index.cjs",
   "module": "./dist/index.mjs",
   "types": "./dist/types/index.d.ts",
@@ -29,10 +32,51 @@
     "build": "npm run clean && rollup -c",
     "build:dev": "NODE_ENV=development npm run build",
     "build:prod": "NODE_ENV=production npm run build",
-    "dev": "nodemon --watch index.ts --watch src -e ts --exec \"npm run build:dev\"",
+    "dev": "nodemon --watch index.ts -e ts --exec \"npm run build:dev\"",
     "check-publish": "npm pack --dry-run",
     "publish:beta": "npm publish --tag beta --access public",
     "publish:latest": "npm publish --tag latest --access public"
+  },
+  "ava": {
+    "files": [
+      "tests/**/*.mjs"
+    ],
+    "nodeArguments": [
+      "--experimental-vm-modules"
+    ]
+  },
+  "c8": {
+    "reports-dir": "reports/coverage",
+    "reporter": [
+      "html",
+      "lcov"
+    ],
+    "exclude": [
+      "tests/**",
+      "node_modules/**"
+    ],
+    "lines": 80,
+    "statements": 80,
+    "functions": 80,
+    "branches": 75
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/<owner>/<repo>.git"
+  },
+  "bugs": {
+    "url": "https://github.com/<owner>/<repo>/issues"
+  },
+  "keywords": [],
+  "author": {
+    "name": "<owner>",
+    "url": "https://github.com/<owner>"
+  },
+  "license": "MIT",
+  "homepage": "https://github.com/<owner>/<repo>#readme",
+  "sideEffects": false,
+  "engines": {
+    "node": ">=18.0.0"
   },
   "publishConfig": {
     "access": "public",
