@@ -1,5 +1,5 @@
 import { join } from 'node:path';
-import { copySync, ensureDirSync, ensureFileSync } from 'fs-extra';
+import { copySync, ensureDirSync, ensureFileSync, readJSONSync } from 'fs-extra';
 import { execSync } from 'node:child_process';
 import * as jsonc from 'jsonc-parser';
 import { readFileSync, rmSync, writeFileSync } from 'node:fs';
@@ -22,42 +22,8 @@ const libs = [
 
 const pnpmInstall = `pnpm add ${libs.join(' ')} -D`;
 
-function cleanup() {
-  execSync(`pnpm remove ${libs.join(' ')}`, { stdio: 'inherit' });
-}
-
-const copyTemplateSync = (segment: string, dest: string) => {
-  const path = join(__dirname, 'template', segment);
-  copySync(path, dest);
-};
-
-const getTemplatePathOf = (segment: string) => {
-  const path = join(__dirname, 'template', segment);
-  return path;
-};
-
-const readPkgJson = (path: string) => {
-  const pkgData = JSON.parse(readFileSync(path, { encoding: 'utf-8' }));
-  return pkgData;
-};
-
-function editPackageJson(filePath: string, edits: Array<any>) {
-  const raw = readFileSync(filePath, 'utf8');
-
-  // edits 是 [{ path, value }] 数组
-  let result = raw;
-  for (const { path, value } of edits) {
-    const editOps = jsonc.modify(result, path, value, {
-      formattingOptions: { insertSpaces: true, tabSize: 2 },
-    });
-    result = jsonc.applyEdits(result, editOps);
-  }
-
-  writeFileSync(filePath, result);
-}
-
 function updatePkgJson({ owner, repo }: { owner: string; repo: string }) {
-  const curPkg = readPkgJson('package.json');
+  const curPkg = readJSONSync('package.json', 'utf-8');
   const backupPath = `/tmp/${curPkg.name}/package.json`;
   try {
     copySync('package.json', backupPath); 
@@ -65,10 +31,10 @@ function updatePkgJson({ owner, repo }: { owner: string; repo: string }) {
     console.error(error);
   }
 
-  let template = readFileSync(
-    getTemplatePathOf('package.json'),
-    { encoding: 'utf-8' },
-  );
+  let template = readFileSync(join(
+    __dirname,
+    'template/package.json'
+  ), 'utf-8');
 
   try {
     template = template.replace(/<owner>/g, owner).replace(/<repo>/g, repo);
@@ -116,25 +82,25 @@ function updatePkgJson({ owner, repo }: { owner: string; repo: string }) {
   }
 }
 
-async function init() {
-  const getOwnerRepo = async () => {
-    const { value } = await prompts({
-      type: 'text',
-      name: 'value',
-      message: `Github <owner/repo> of the project (e.g. "isaaxite/path-treeify")?`,
-    });
+async function getOwnerRepo() {
+  const { value } = await prompts({
+    type: 'text',
+    name: 'value',
+    message: `Github <owner/repo> of the project (e.g. "isaaxite/path-treeify")?`,
+  });
 
-    if (typeof value === 'undefined') {
-      process.exit(0);
-    }
-
-    if (!value) {
-      return getOwnerRepo();
-    }
-
-    return value;
+  if (typeof value === 'undefined') {
+    process.exit(0);
   }
 
+  if (!value) {
+    return await getOwnerRepo();
+  }
+
+  return value;
+}
+
+async function initial() {
   const [owner, repo] = (await getOwnerRepo()).split('/');
 
   ensureFileSync('index.ts');
@@ -154,7 +120,45 @@ async function init() {
 }
 
 function main() {
-  init();
+  const minimist = require('minimist');
+  const args = minimist(process.argv.slice(2), {
+    boolean: ['unload'],
+  });
+
+  if (args.unload) {
+    let pkgname;
+    try {
+      pkgname = readJSONSync(join(__dirname, '../package.json'), { encoding: 'utf-8' }).name;
+    } catch (error) {
+      pkgname = '@isaaxite/nodelib-scaffold';
+    }
+    execSync(`pnpm remove ${pkgname}`, { stdio: 'inherit' });
+  } else {
+    return initial().catch((err) => {
+      console.error(err);
+      process.exit(1);
+    });
+  }
 }
 
 main();
+
+function copyTemplateSync(segment: string, dest: string) {
+  const path = join(__dirname, 'template', segment);
+  copySync(path, dest);
+};
+
+function editPackageJson(filePath: string, edits: Array<any>) {
+  const raw = readFileSync(filePath, 'utf8');
+
+  // edits 是 [{ path, value }] 数组
+  let result = raw;
+  for (const { path, value } of edits) {
+    const editOps = jsonc.modify(result, path, value, {
+      formattingOptions: { insertSpaces: true, tabSize: 2 },
+    });
+    result = jsonc.applyEdits(result, editOps);
+  }
+
+  writeFileSync(filePath, result);
+}

@@ -92,7 +92,7 @@ jobs:
 
   trigger-build-workflow:
     needs: ['converage-unitests']
-    if: inputs.publish_type == 'none'
+    if: inputs.publish_type != 'none'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/github-script@v8
